@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Security Warning</title>
+<style>
+  :root{
+    --red:#ff2626;
+    --red-dim:#7a0e0e;
+    --green:#00ff6a;
+    --bg:#0a0000;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html,body{
+    height:100%;
+    background:var(--bg);
+    overflow:hidden;
+    font-family:"Courier New", monospace;
+  }
+  #matrix{
+    position:fixed; inset:0; z-index:0; opacity:0.35;
+  }
+  .scanlines{
+    position:fixed; inset:0; z-index:5; pointer-events:none;
+    background:repeating-linear-gradient(
+      to bottom,
+      rgba(255,255,255,0.03) 0px,
+      rgba(255,255,255,0.03) 1px,
+      transparent 2px,
+      transparent 4px
+    );
+    mix-blend-mode:overlay;
+  }
+  .vignette{
+    position:fixed; inset:0; z-index:6; pointer-events:none;
+    box-shadow: inset 0 0 200px 60px #000;
+  }
+  #stage{
+    position:relative; z-index:10;
+    height:100%;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    text-align:center;
+    padding:24px;
+  }
+  .glitch-wrap{ position:relative; }
+  h1.hacked{
+    font-size:clamp(40px, 11vw, 110px);
+    color:var(--red);
+    letter-spacing:4px;
+    font-weight:900;
+    text-shadow: 0 0 18px rgba(255,38,38,0.85), 0 0 60px rgba(255,38,38,0.4);
+    animation: shake 0.18s infinite, flicker 2.4s infinite;
+    position:relative;
+    text-transform:uppercase;
+  }
+  h1.hacked::before, h1.hacked::after{
+    content:"YOU'VE BEEN HACKED";
+    position:absolute; left:0; top:0; width:100%;
+    overflow:hidden;
+  }
+  h1.hacked::before{
+    color:#00fff2; left:3px; text-shadow:none;
+    clip-path: inset(0 0 55% 0);
+    animation: glitchTop 2.6s infinite linear;
+  }
+  h1.hacked::after{
+    color:#ff00e6; left:-3px; text-shadow:none;
+    clip-path: inset(55% 0 0 0);
+    animation: glitchBottom 3.1s infinite linear;
+  }
+  @keyframes shake{
+    0%{ transform: translate(0,0); }
+    20%{ transform: translate(-2px,1px); }
+    40%{ transform: translate(2px,-1px); }
+    60%{ transform: translate(-1px,2px); }
+    80%{ transform: translate(1px,-2px); }
+    100%{ transform: translate(0,0); }
+  }
+  @keyframes flicker{
+    0%,19%,21%,23%,80%,100%{ opacity:1; }
+    20%,22%,79%{ opacity:0.55; }
+  }
+  @keyframes glitchTop{
+    0%,100%{ transform:translate(0,0); }
+    20%{ transform:translate(-4px,-1px); }
+    40%{ transform:translate(3px,1px); }
+    60%{ transform:translate(-2px,1px); }
+    80%{ transform:translate(2px,-1px); }
+  }
+  @keyframes glitchBottom{
+    0%,100%{ transform:translate(0,0); }
+    25%{ transform:translate(3px,1px); }
+    50%{ transform:translate(-3px,-1px); }
+    75%{ transform:translate(2px,1px); }
+  }
+  .sub{
+    margin-top:18px;
+    color:var(--green);
+    font-size:clamp(14px,2.6vw,20px);
+    letter-spacing:1px;
+    text-shadow:0 0 8px rgba(0,255,106,0.6);
+    text-transform:uppercase;
+  }
+  #terminal{
+    margin-top:34px;
+    width:min(640px, 90vw);
+    background:rgba(0,10,0,0.55);
+    border:1px solid rgba(0,255,106,0.4);
+    border-radius:6px;
+    padding:14px 16px;
+    text-align:left;
+    direction:ltr;
+    font-size:clamp(11px,1.9vw,14px);
+    color:var(--green);
+    min-height:150px;
+    box-shadow:0 0 30px rgba(0,255,106,0.15) inset;
+  }
+  #terminal .line{ white-space:pre-wrap; opacity:0.95; line-height:1.5; }
+  #terminal .cursor{
+    display:inline-block; width:8px; height:14px; background:var(--green);
+    animation: blink 1s steps(1) infinite; vertical-align:middle; margin-left:2px;
+  }
+  @keyframes blink{ 50%{ opacity:0; } }
+  #bar-wrap{
+    margin-top:22px; width:min(640px,90vw);
+    height:10px; border-radius:6px; overflow:hidden;
+    background:rgba(255,255,255,0.08);
+    border:1px solid rgba(255,38,38,0.5);
+  }
+  #bar{
+    height:100%; width:0%;
+    background:linear-gradient(90deg, var(--red-dim), var(--red));
+    transition:width 0.2s linear;
+  }
+  #timer{
+    margin-top:10px; color:#ff8080; font-size:14px; letter-spacing:1px;
+  }
+  /* Reveal screen */
+  #reveal{
+    display:none;
+    position:fixed; inset:0; z-index:50;
+    background:#0d1117; color:#fff;
+    align-items:center; justify-content:center; flex-direction:column;
+    text-align:center; padding:32px;
+  }
+  #reveal h2{
+    font-size:clamp(32px,7vw,56px);
+    color:#00ff6a;
+    margin-bottom:14px;
+  }
+  #reveal p{
+    color:#cfcfcf; max-width:520px; line-height:1.9; font-size:clamp(15px,2.4vw,19px);
+  }
+  #reveal .emoji{ font-size:60px; margin-bottom:10px; }
+  #reveal .credit{
+    margin-top:26px; font-size:13px; color:#7a7a7a; letter-spacing:0.5px;
+  }
+</style>
+</head>
+<body>
+  <canvas id="matrix"></canvas>
+  <div class="scanlines"></div>
+  <div class="vignette"></div>
+
+  <div id="stage">
+    <div class="glitch-wrap">
+      <h1 class="hacked" data-text="YOU'VE BEEN HACKED">YOU'VE BEEN HACKED</h1>
+    </div>
+    <div class="sub">SYSTEM COMPROMISED // your device is now under control</div>
+
+    <div id="terminal"><span class="cursor"></span></div>
+
+    <div id="bar-wrap"><div id="bar"></div></div>
+    <div id="timer">00:00 / 04:00</div>
+  </div>
+
+  <div id="reveal">
+    <div class="emoji">😄</div>
+    <h2>Just kidding!</h2>
+    <p>
+      Relax — nothing was actually hacked. This was just a harmless prank.
+      But remember: scanning QR codes from untrusted sources can lead to real
+      phishing pages (a tactic called "quishing") — always be cautious with
+      unfamiliar links and QR codes.
+    </p>
+    <div class="credit">This page was made purely for a joke / awareness purposes</div>
+  </div>
+
+<script>
+  // Matrix rain background
+  const canvas = document.getElementById('matrix');
+  const ctx = canvas.getContext('2d');
+  function resize(){ canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+  resize();
+  window.addEventListener('resize', resize);
+
+  const chars = "アイウエオカキクケコサシスセソタチツテト01ABCDEF#$%&*01".split("");
+  const fontSize = 16;
+  let columns, drops;
+  function setupDrops(){
+    columns = Math.floor(canvas.width / fontSize);
+    drops = new Array(columns).fill(1);
+  }
+  setupDrops();
+  window.addEventListener('resize', setupDrops);
+
+  function drawMatrix(){
+    ctx.fillStyle = "rgba(10,0,0,0.15)";
+    ctx.fillRect(0,0,canvas.width,canvas.height);
+    ctx.fillStyle = "#ff2626";
+    ctx.font = fontSize + "px monospace";
+    for(let i=0;i<drops.length;i++){
+      const text = chars[Math.floor(Math.random()*chars.length)];
+      ctx.fillText(text, i*fontSize, drops[i]*fontSize);
+      if(drops[i]*fontSize > canvas.height && Math.random() > 0.975){
+        drops[i] = 0;
+      }
+      drops[i]++;
+    }
+  }
+  setInterval(drawMatrix, 45);
+
+  // Fake terminal log
+  const logLines = [
+    "[*] Connecting to remote server ...",
+    "[+] Firewall bypassed",
+    "[*] Scanning sensitive files ...",
+    "[+] Found 1,204 files",
+    "[*] Extracting stored credentials ...",
+    "[+] Saved passwords found: 17",
+    "[*] Activating front camera ...",
+    "[!] Access denied by system",
+    "[*] Attempting privilege escalation ...",
+    "[+] Administrator privileges granted",
+    "[*] Encrypting personal files ...",
+    "[!] Uploading data to remote host ..."
+  ];
+  const term = document.getElementById('terminal');
+  let li = 0;
+  function addLine(){
+    if(li >= logLines.length){ li = 0; }
+    const cursor = term.querySelector('.cursor');
+    const div = document.createElement('div');
+    div.className = 'line';
+    div.textContent = logLines[li];
+    term.insertBefore(div, cursor);
+    while(term.querySelectorAll('.line').length > 7){
+      term.removeChild(term.querySelector('.line'));
+    }
+    li++;
+  }
+  setInterval(addLine, 850);
+  addLine();
+
+  // Timer / progress bar for TOTAL_SECONDS, then reveal
+  const TOTAL_SECONDS = 240; // 4 minutes
+  let elapsed = 0;
+  const bar = document.getElementById('bar');
+  const timerEl = document.getElementById('timer');
+  function fmt(s){
+    const m = Math.floor(s/60).toString().padStart(2,'0');
+    const sec = Math.floor(s%60).toString().padStart(2,'0');
+    return m+":"+sec;
+  }
+  const tick = setInterval(()=>{
+    elapsed += 0.2;
+    const pct = Math.min(100, (elapsed/TOTAL_SECONDS)*100);
+    bar.style.width = pct + "%";
+    timerEl.textContent = fmt(elapsed) + " / " + fmt(TOTAL_SECONDS);
+    if(elapsed >= TOTAL_SECONDS){
+      clearInterval(tick);
+      document.getElementById('stage').style.display = 'none';
+      document.getElementById('reveal').style.display = 'flex';
+    }
+  }, 200);
+</script>
+</body>
+</html>
